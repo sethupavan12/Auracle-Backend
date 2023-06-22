@@ -9,7 +9,9 @@ from langchain.prompts import PromptTemplate
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import SequentialChain
-
+from agents import plan_execute
+from langchain import SerpAPIWrapper
+from langchain.agents.tools import Tool
 
 working_directory = TemporaryDirectory()
 
@@ -44,8 +46,16 @@ def basic_impl():
     project_chain = project_planner()
     req_detailer_chain = req_detailer()
     risk_chain = risk_assess()
-    overall_chain = SequentialChain(chains=[analysis_chain,req_detailer_chain, project_chain,risk_chain],input_variables=["context"],output_variables=["requirements_USPs", "requirements_details", "project_plan","risk_assessment"],verbose=True)
-    answer = overall_chain({"context":context})
+    overall_chain = SequentialChain(chains=[analysis_chain,req_detailer_chain, project_chain,risk_chain],input_variables=["idea","problemDefinition","targetAudience","constraints","solutionOverview"],output_variables=["requirements_USPs", "requirements_details", "project_plan","risk_assessment"],verbose=True)
+    answer = overall_chain(
+        {
+            "idea":idea,
+            "problemDefinition":problemDefinition,
+            "targetAudience":targetAudience,
+            "constraints":constraints,
+            "solutionOverview":solutionOverview,
+        }
+    )
 
     return jsonify({'answer': answer})
 
@@ -55,9 +65,8 @@ def basic_impl():
 def analysis_bot():
     """Takes context and generates requirements and USPs"""
     llm = Anthropic(streaming=True,callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),temperature=0.7)
-    template = """You are a Software Development analysis bot. 
-    You need to analyse all the information given to you here {context}
-    Based on the analysis, you should generate functional requirements and non functional requirements.
+    template = """You are a Software Development analysis bot. Your job is to take an idea, a problem for certain target audience and based on the
+    target audience you need to analyse the given information, you should generate functional requirements and non functional requirements.
     You should also identify USPs (unique selling points) this software should have to compete in the market.
 
     These are requirements and USPs for given software description:
@@ -82,7 +91,7 @@ def req_detailer():
 
 def project_planner():
     """Takes requirements and generates project plan"""
-    llm = Anthropic(streaming=True,callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),temperature=0)
+    llm = Anthropic(streaming=True,callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),temperature=0.5)
     template = """You are a software developement planning agent.
     Given the requirements and develop a proper project plan that identifies, prioritizes, and assigns the tasks and
     resources required to build the project
@@ -109,6 +118,32 @@ def risk_assess():
     return risk_chain
 
 
+############# AGENTS ###############################
+
+
+def market_analysis_agent_search():
+    """ Takes an area to research and does so using internet"""
+    search = SerpAPIWrapper()
+    tools = [
+        Tool(
+            name = "Search",
+            func=search.run,
+            description="Useful to learn about best pratice to do something or to know about current events you can use this to search"
+        )
+        ,
+        # Tool(
+        # name="human",
+        # description="Useful for when you need to get input from a human",
+        # func=input,  # Use the default input function
+        # )
+    ]
+
+    market_agent = plan_execute(tools)
+
+    prompt = """"""
+
+    summarised_answer = market_agent.run(prompt)
+    
 
 # @app.route('/basic', methods=['POST'])
 # def basic_impl():
