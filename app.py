@@ -80,7 +80,7 @@ def analysis_bot():
 
     So broadly, the solution overview is: {solutionOverview} with the metrics and goals of the project: {metricsAndGoals}
 
-    These are requirements and USPs based on the given data:
+    These are requirements and USPs based on the given data: (give the answer rich text format)
     """
     prompt_template = PromptTemplate(input_variables=["idea","problemDefinition","metricsAndGoals","targetAudience","constraints","solutionOverview"], template=template)
     analysis_chain = LLMChain(llm=llm, prompt=prompt_template, output_key="requirements_USPs")
