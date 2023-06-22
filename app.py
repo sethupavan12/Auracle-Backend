@@ -9,7 +9,7 @@ from langchain.prompts import PromptTemplate
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import SequentialChain
-from agents import plan_execute
+from agent import plan_execute
 from langchain import SerpAPIWrapper
 from langchain.agents.tools import Tool
 
