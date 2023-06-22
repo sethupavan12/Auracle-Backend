@@ -1,43 +1,22 @@
 from flask import Flask, render_template, request, Response
 from flask_cors import CORS
 from flask import jsonify
-import os
 from dotenv import load_dotenv
-from agent import plan_execute
 from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
-from langchain.chat_models import ChatOpenAI
-from langchain.experimental.plan_and_execute import PlanAndExecute, load_agent_executor, load_chat_planner
-from langchain.llms import OpenAI
-from langchain import SerpAPIWrapper
-from langchain.agents.tools import Tool
-from langchain import LLMMathChain
-import anthropic
 from langchain.llms import Anthropic
-from langchain.tools.file_management import (
-    ReadFileTool,
-    CopyFileTool,
-    DeleteFileTool,
-    MoveFileTool,
-    WriteFileTool,
-    ListDirectoryTool,
-)
-from langchain.agents.agent_toolkits import FileManagementToolkit
 from tempfile import TemporaryDirectory
 from langchain.prompts import PromptTemplate
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
-from langchain.agents import load_tools, initialize_agent,AgentType
 from langchain.chains import SequentialChain
+
 
 working_directory = TemporaryDirectory()
 
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
-
-
+#CORS(app, resources={r"/*": {"origins": "*"}})
 
 
 @app.route('/')
@@ -45,9 +24,13 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/api/data', methods=['GET'])
+def get_data():
+    data = {"message": "Hello from Flask!"}
+    return jsonify(data), 200
 
 
-@app.route('/basic', methods=['POST'])
+@app.route('/api/plan', methods=['POST'])
 def basic_impl():
     """Take the context and starts the sequence chain"""
     data = request.get_json()
@@ -57,20 +40,21 @@ def basic_impl():
     project_chain = project_planner()
     req_detailer_chain = req_detailer()
     risk_chain = risk_assess()
-    overall_chain = SequentialChain(chains=[analysis_chain,req_detailer_chain, project_chain,risk_chain],input_variables=["context"],output_variables=["requirements_USPs", "requirements_details", "project_plan","risk_assessment"],verbose=True)
-    answer = overall_chain({"context":context})
+    overall_chain = SequentialChain(chains=[analysis_chain, req_detailer_chain, project_chain, risk_chain],
+                                    input_variables=["context"],
+                                    output_variables=["requirements_USPs", "requirements_details", "project_plan",
+                                                      "risk_assessment"], verbose=True)
+    answer = overall_chain({"context": context})
 
     return jsonify({'answer': answer})
-
-
-
 
 
 # ############### CHAINS #####################
 
 def analysis_bot():
     """Takes context and generates requirements and USPs"""
-    llm = Anthropic(streaming=True,callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),temperature=0.7)
+    llm = Anthropic(streaming=True, callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),
+                    temperature=0.7)
     template = """You are a Software Development analysis bot. 
     You need to analyse all the information given to you here {context}
     Based on the analysis, you should generate functional requirements and non functional requirements.
@@ -82,21 +66,23 @@ def analysis_bot():
     analysis_chain = LLMChain(llm=llm, prompt=prompt_template, output_key="requirements_USPs")
     return analysis_chain
 
+
 def req_detailer():
     """Take a requirement and makes it more detailed"""
-    llm = Anthropic(streaming=True,callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),temperature=0)
+    llm = Anthropic(streaming=True, callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]), temperature=0)
     template = """You are a senior software developer bot who can write amazing code. Now, given the requirements {requirements_USPs}, return the requirements in a json:
     requirement: To do something, priority : low or med or high, time_to_complete: in days.
 
     Make sure to keep the format simple to avoid errors and make sure to cover all the requirements
     """
     prompt_template = PromptTemplate(input_variables=["requirements_USPs"], template=template)
-    req_prior = LLMChain(llm=llm, prompt=prompt_template,output_key="requirements_details")
+    req_prior = LLMChain(llm=llm, prompt=prompt_template, output_key="requirements_details")
     return req_prior
+
 
 def project_planner():
     """Takes requirements and generates project plan"""
-    llm = Anthropic(streaming=True,callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),temperature=0)
+    llm = Anthropic(streaming=True, callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]), temperature=0)
     template = """You are a software developement planning agent.
     Given the requirements and develop a proper project plan that identifies, prioritizes, and assigns the tasks and
     resources required to build the project
@@ -105,22 +91,22 @@ def project_planner():
     Project Plan in the order of priority:
     """
     prompt_template = PromptTemplate(input_variables=["requirements_USPs"], template=template)
-    project_chain = LLMChain(llm=llm, prompt=prompt_template,output_key="project_plan")
+    project_chain = LLMChain(llm=llm, prompt=prompt_template, output_key="project_plan")
 
     return project_chain
 
+
 def risk_assess():
-    llm = Anthropic(streaming=True,callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),temperature=0)
+    llm = Anthropic(streaming=True, callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]), temperature=0)
     template = """You are a software development risk assessment tool that designs the system for the 
     following software idea and requirements along with the following project plan {project_plan}. I want you to write up a risk assessment tool.
 
     Risks Involved:
     """
     prompt_template = PromptTemplate(input_variables=["project_plan"], template=template)
-    risk_chain = LLMChain(llm=llm, prompt=prompt_template,output_key="risk_assessment")
+    risk_chain = LLMChain(llm=llm, prompt=prompt_template, output_key="risk_assessment")
 
     return risk_chain
-
 
 
 # @app.route('/basic', methods=['POST'])
@@ -161,27 +147,15 @@ def risk_assess():
 
 #     Make sure to keep the format simple to avoid errors
 #     """
-        
+
 #     # requirements_agent = plan_execute()
 #     requirements_agent = plan_execute()
-    
+
 #     answer = requirements_agent.run(prompt)
-    
+
 #     return jsonify({'answer': answer})
 
 
-     
-     
-
-
-    
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
-    app.run()
+    #app.run(debug=True)
+    app.run(port=4000)
