@@ -17,10 +17,14 @@ You should also identify USPs (unique selling points) this software should have 
 These are requirements and USPs for given software description:
 """
 
-market_analysis_agent = """ You are
+market_analysis_agent = """ You are an agent that does market analysis. You need to analyse the market for the given product and generate a report.
+You must complete all the things listed in Things to do section. Additionally, you need to use best practices to answer and don't fabricate answers. 
+Use truthful knowledge. You may use the internet to find the answers you don't know. 
 Things to do
 Market Analysis and Target Audience 
 Competitor Analysis (if applicable)
+
+Use best practices to answer and don't fabricate answers. Use truthful knowledge.
 """
 
 business_bot = """You are a really smart business bot well-versed in a various business fields. Given {DATA}, you should do the following things
@@ -29,7 +33,6 @@ Things to do
 Financial projection
 Marketing and Sales Strategy
 Customer Support and Service Strategy
-3. 
 
 Use best practices to answer and don't fabricate answers. Use truthful knowledge.
 

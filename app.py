@@ -13,6 +13,7 @@ from agent import plan_execute
 from langchain import SerpAPIWrapper
 from langchain.agents.tools import Tool
 from langchain.tools import DuckDuckGoSearchRun
+from langchain.agents import load_tools, initialize_agent,AgentType
 
 working_directory = TemporaryDirectory()
 
@@ -21,7 +22,7 @@ load_dotenv()
 app = Flask(__name__)
 #CORS(app, resources={r"/*": {"origins": "*"}})
 
-
+llm = Anthropic(streaming=True, callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]), temperature=0)
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -45,10 +46,11 @@ def basic_impl():
     metricsAndGoals = data['metricsAndGoals']
 
     analysis_chain = analysis_bot()
+    business_planner_chain = business_planner()
     project_chain = project_planner()
     req_detailer_chain = req_detailer()
     risk_chain = risk_assess()
-    overall_chain = SequentialChain(chains=[analysis_chain,req_detailer_chain, project_chain,risk_chain],input_variables=["idea","problemDefinition","metricsAndGoals","targetAudience","constraints","solutionOverview"],output_variables=["requirements_USPs", "requirements_details", "project_plan","risk_assessment"],verbose=True)
+    overall_chain = SequentialChain(chains=[analysis_chain,req_detailer_chain,business_planner_chain, project_chain,risk_chain],input_variables=["idea","problemDefinition","metricsAndGoals","targetAudience","constraints","solutionOverview"],output_variables=["requirements_USPs", "requirements_details", "project_plan","risk_assessment"],verbose=True)
     answer = overall_chain(
         {
             "idea":idea,
@@ -88,8 +90,9 @@ def analysis_bot():
 def req_detailer():
     """Take a requirement and makes it more detailed"""
     llm = Anthropic(streaming=True, callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]), temperature=0)
-    template = """You are a senior software developer bot who can write amazing code. Now, given the requirements {requirements_USPs}, return the requirements in a json:
-    requirement: To do something, priority : low or med or high, time_to_complete: in days.
+    template = """You are a senior software developer bot who can write amazing code. Now, given the requirements {requirements_USPs}, return the requirements in a json
+    requirement: To do something, priority : low or med or high, time_to_complete: in days. Make sure you dont end the answer in the middle of a sentence.
+    it is a json object.
 
     Make sure to keep the format simple to avoid errors and make sure to cover all the requirements
     """
@@ -97,25 +100,46 @@ def req_detailer():
     req_prior = LLMChain(llm=llm, prompt=prompt_template, output_key="requirements_details")
     return req_prior
 
+def business_planner():
+    """Takes detailed req and generates business plan"""
+    llm = Anthropic(streaming=True, callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]), temperature=0)
+    business_bot = """
+    You are a really smart business bot well-versed in a various business fields. Given requirement details {requirements_details}
+    the idea, you should do the following things:
+    Things to do:
+    Briefy summarise current market landscape
+    Financial projection
+    Marketing and Sales Strategy
+    Customer Support and Service Strategy
+
+    Use best practices to answer and don't fabricate answers. Use truthful knowledge.
+
+    """
+    prompt_template = PromptTemplate(input_variables=["requirements_details"], template=business_bot)
+    business_chain = LLMChain(llm=llm, prompt=prompt_template, output_key="business_plan")
+    return business_chain
+
 
 def project_planner():
     """Takes requirements and generates project plan"""
     llm = Anthropic(streaming=True,callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),temperature=0.5)
     template = """You are a software developement planning agent.
-    Given the requirements and develop a proper project plan that identifies, prioritizes, and assigns the tasks and
+    Given the requirements and business plan , develop a proper project plan that identifies, prioritizes, and assigns the tasks and
     resources required to build the project
-    Requirements:
-    {requirements_USPs}
+
+    Business Plan:
+    {business_plan}
     Project Plan in the order of priority:
+
     """
-    prompt_template = PromptTemplate(input_variables=["requirements_USPs"], template=template)
+    prompt_template = PromptTemplate(input_variables=["business_plan"], template=template)
     project_chain = LLMChain(llm=llm, prompt=prompt_template, output_key="project_plan")
 
     return project_chain
 
 
 def risk_assess():
-    llm = Anthropic(streaming=True, callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]), temperature=0)
+    
     template = """You are a software development risk assessment tool that designs the system for the 
     following software idea and requirements along with the following project plan {project_plan}. I want you to write up a risk assessment tool.
 
@@ -127,32 +151,68 @@ def risk_assess():
     return risk_chain
 
 
+
+
+
+
+
+def add_Item(query: str) -> str:
+    import os, json, requests
+    url = "https://api.monday.com/v2"
+
+    headers = {
+    'Authorization': os.getenv("MONDAY_API_KEY"),
+    'Content-Type': 'application/json'
+}
+
+    payload = json.dumps({
+        "query": f"mutation {{create_item (board_id: 1216344722, group_id: \"topics\", item_name: \"{query}\") {{id}}}}"
+    })
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+    
+    if response.status_code == 200:
+        return "Item added successfully"
+    else:
+        return f"Request failed: {response.text}"
+
+
 ############# AGENTS ###############################
 
-
+@app.route('/api/agent_monday', methods=['POST'])
 def market_analysis_agent_search():
     """ Takes an area to research and does so using internet"""
+    data = request.get_json()
+    project_plan = data['project_plan']
+    requirements = data['requirements_USPs']
+
+
     search = SerpAPIWrapper()
     duck_search = DuckDuckGoSearchRun()
-    tools = [
-        Tool(
-            name = "Search",
-            func=search.run,
-            description="Useful to learn about best pratice to do something or to know about current events you can use this to search"
-        )
-        ,
-        # Tool(
-        # name="human",
-        # description="Useful for when you need to get input from a human",
-        # func=input,  # Use the default input function
-        # )
-    ]
 
+    tools = [
+        Tool.from_function(
+            func=add_Item,
+            name="Add Item to Monday.com",
+            description="Useful for when you need to add a new item to Monday, input is the name of the new item",
+        ),
+    ]
+    agent = initialize_agent(tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True,handle_parsing_errors="Check your output and make sure it conforms!")
     market_agent = plan_execute(tools)
 
-    prompt = """"""
+    prompt = f"""You are a software developement planning agent.
+    Given the requirements, develop a proper project plan by creating tasks. add the tasks to monday.com using the tool provided.
+    requirements:
+    {requirements}
+    Business Plan:
+    {project_plan}
+    Project Plan in the order of priority:
+    """
+    
 
-    summarised_answer = market_agent.run(prompt)
+    market_agent.run(prompt)
+
+    return jsonify({'answer': "Project plan created and added to monday.com"})
     
 
 # @app.route('/basic', methods=['POST'])
