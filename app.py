@@ -44,11 +44,8 @@ def basic_impl():
     project_chain = project_planner()
     req_detailer_chain = req_detailer()
     risk_chain = risk_assess()
-    overall_chain = SequentialChain(chains=[analysis_chain, req_detailer_chain, project_chain, risk_chain],
-                                    input_variables=["context"],
-                                    output_variables=["requirements_USPs", "requirements_details", "project_plan",
-                                                      "risk_assessment"], verbose=True)
-    answer = overall_chain({"context": context})
+    overall_chain = SequentialChain(chains=[analysis_chain,req_detailer_chain, project_chain,risk_chain],input_variables=["context"],output_variables=["requirements_USPs", "requirements_details", "project_plan","risk_assessment"],verbose=True)
+    answer = overall_chain({"context":context})
 
     return jsonify({'answer': answer})
 
