@@ -80,7 +80,7 @@ def analysis_bot():
 
     These are requirements and USPs based on the given data:
     """
-    prompt_template = PromptTemplate(input_variables=["idea","problemDefinition","targetAudience","constraints","solutionOverview"], template=template)
+    prompt_template = PromptTemplate(input_variables=["idea","problemDefinition","metricsAndGoals","targetAudience","constraints","solutionOverview"], template=template)
     analysis_chain = LLMChain(llm=llm, prompt=prompt_template, output_key="requirements_USPs")
     return analysis_chain
 
