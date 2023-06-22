@@ -69,9 +69,15 @@ def analysis_bot():
     target audience you need to analyse the given information, you should generate functional requirements and non functional requirements.
     You should also identify USPs (unique selling points) this software should have to compete in the market.
 
-    These are requirements and USPs for given software description:
+    Here is the idea: {idea} and here is the problem: {problemDefinition} for the following target audience: {targetAudience}
+
+    Here are the constraints: {constraints}. If they are not given, assume there are no constraints. 
+
+    So broadly, the solution overview is: {solutionOverview}
+
+    These are requirements and USPs based on the given data:
     """
-    prompt_template = PromptTemplate(input_variables=["context"], template=template)
+    prompt_template = PromptTemplate(input_variables=["idea","problemDefinition","targetAudience","constraints","solutionOverview"], template=template)
     analysis_chain = LLMChain(llm=llm, prompt=prompt_template, output_key="requirements_USPs")
     return analysis_chain
 
