@@ -51,14 +51,26 @@ def index():
 def basic_impl():
     """Take the context and starts the sequence chain"""
     data = request.get_json()
-    context = data['context']
+    idea = data['idea']
+    problemDefinition = data['problemDefinition']
+    targetAudience = data['targetAudience']
+    constraints = data['constraints']
+    solutionOverview = data['solutionOverview']
 
     analysis_chain = analysis_bot()
     project_chain = project_planner()
     req_detailer_chain = req_detailer()
     risk_chain = risk_assess()
-    overall_chain = SequentialChain(chains=[analysis_chain,req_detailer_chain, project_chain,risk_chain],input_variables=["context"],output_variables=["requirements_USPs", "requirements_details", "project_plan","risk_assessment"],verbose=True)
-    answer = overall_chain({"context":context})
+    overall_chain = SequentialChain(chains=[analysis_chain,req_detailer_chain, project_chain,risk_chain],input_variables=["idea","problemDefinition","targetAudience","constraints","solutionOverview"],output_variables=["requirements_USPs", "requirements_details", "project_plan","risk_assessment"],verbose=True)
+    answer = overall_chain(
+        {
+            "idea":idea,
+            "problemDefinition":problemDefinition,
+            "targetAudience":targetAudience,
+            "constraints":constraints,
+            "solutionOverview":solutionOverview,
+        }
+    )
 
     return jsonify({'answer': answer})
 
@@ -71,9 +83,8 @@ def basic_impl():
 def analysis_bot():
     """Takes context and generates requirements and USPs"""
     llm = Anthropic(streaming=True,callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),temperature=0.7)
-    template = """You are a Software Development analysis bot. 
-    You need to analyse all the information given to you here {context}
-    Based on the analysis, you should generate functional requirements and non functional requirements.
+    template = """You are a Software Development analysis bot. Your job is to take an idea, a problem for certain target audience and based on the
+    target audience you need to analyse the given information, you should generate functional requirements and non functional requirements.
     You should also identify USPs (unique selling points) this software should have to compete in the market.
 
     These are requirements and USPs for given software description:
@@ -96,7 +107,7 @@ def req_detailer():
 
 def project_planner():
     """Takes requirements and generates project plan"""
-    llm = Anthropic(streaming=True,callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),temperature=0)
+    llm = Anthropic(streaming=True,callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),temperature=0.5)
     template = """You are a software developement planning agent.
     Given the requirements and develop a proper project plan that identifies, prioritizes, and assigns the tasks and
     resources required to build the project
@@ -114,7 +125,7 @@ def risk_assess():
     template = """You are a software development risk assessment tool that designs the system for the 
     following software idea and requirements along with the following project plan {project_plan}. I want you to write up a risk assessment tool.
 
-    Risks Involved:
+    Risks Involved and mitigation:
     """
     prompt_template = PromptTemplate(input_variables=["project_plan"], template=template)
     risk_chain = LLMChain(llm=llm, prompt=prompt_template,output_key="risk_assessment")
@@ -122,6 +133,32 @@ def risk_assess():
     return risk_chain
 
 
+############# AGENTS ###############################
+
+
+def market_analysis_agent_search():
+    """ Takes an area to research and does so using internet"""
+    search = SerpAPIWrapper()
+    tools = [
+        Tool(
+            name = "Search",
+            func=search.run,
+            description="Useful to learn about best pratice to do something or to know about current events you can use this to search"
+        )
+        ,
+        # Tool(
+        # name="human",
+        # description="Useful for when you need to get input from a human",
+        # func=input,  # Use the default input function
+        # )
+    ]
+
+    market_agent = plan_execute(tools)
+
+    prompt = """"""
+
+    summarised_answer = market_agent.run(prompt)
+    
 
 # @app.route('/basic', methods=['POST'])
 # def basic_impl():

@@ -33,24 +33,24 @@ llm = Anthropic(streaming=True,callback_manager=CallbackManager([StreamingStdOut
 # llm = ChatAnthropic()
 # llm_math_chain = LLMMathChain.from_llm(llm=llm, verbose=True)
 
+tools = [
+    Tool(
+        name = "Search",
+        func=search.run,
+        description="Useful to learn about best pratice to do something or to know about current events you can use this to search"
+    )
+    ,
+    # Tool(
+    # name="human",
+    # description="Useful for when you need to get input from a human",
+    # func=input,  # Use the default input function
+    # )
+]
 
-
-def plan_execute():
+def plan_execute(tools):
     model = ChatAnthropic()
     planner = load_chat_planner(model)
-    tools = [
-        Tool(
-            name = "Search",
-            func=search.run,
-            description="Useful to learn about best pratice to do something or to know about current events you can use this to search"
-        )
-        ,
-        # Tool(
-        # name="human",
-        # description="Useful for when you need to get input from a human",
-        # func=input,  # Use the default input function
-        # )
-    ]
+
 
     executor = load_agent_executor(model, tools, verbose=True)
 
@@ -58,7 +58,7 @@ def plan_execute():
 
     return agent
 
-def plan_execute():
+def plan_execute_with_internet():
     model = ChatAnthropic()
     planner = load_chat_planner(model)
     tools = [

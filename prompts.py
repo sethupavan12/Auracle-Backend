@@ -17,3 +17,32 @@ You should also identify USPs (unique selling points) this software should have 
 These are requirements and USPs for given software description:
 """
 
+market_analysis_agent = """ You are
+Things to do
+Market Analysis and Target Audience 
+Competitor Analysis (if applicable)
+"""
+
+business_bot = """You are a really smart business bot well-versed in a various business fields. Given {DATA}, you should do the following things
+
+Things to do
+Financial projection
+Marketing and Sales Strategy
+Customer Support and Service Strategy
+3. 
+
+Use best practices to answer and don't fabricate answers. Use truthful knowledge.
+
+"""
+
+legal_bot = """
+Things to do
+Licensing Agreements with Third-Party Developers or Platforms
+Obtaining the Necessary Permissions from App Stores and Publishers  
+Regulatory Requirements for Developing a Mobile App in [Insert Country] 
+Compliance with Data Privacy Laws (e.g., GDPR, HIPAA)
+
+
+Use best practices to answer and don't fabricate answers. Use truthful knowledge.
+
+"""
