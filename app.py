@@ -12,6 +12,7 @@ from langchain.chains import SequentialChain
 from agent import plan_execute
 from langchain import SerpAPIWrapper
 from langchain.agents.tools import Tool
+from langchain.tools import DuckDuckGoSearchRun
 
 working_directory = TemporaryDirectory()
 
@@ -41,16 +42,18 @@ def basic_impl():
     targetAudience = data['targetAudience']
     constraints = data['constraints']
     solutionOverview = data['solutionOverview']
+    metricsAndGoals = data['metricsAndGoals']
 
     analysis_chain = analysis_bot()
     project_chain = project_planner()
     req_detailer_chain = req_detailer()
     risk_chain = risk_assess()
-    overall_chain = SequentialChain(chains=[analysis_chain,req_detailer_chain, project_chain,risk_chain],input_variables=["idea","problemDefinition","targetAudience","constraints","solutionOverview"],output_variables=["requirements_USPs", "requirements_details", "project_plan","risk_assessment"],verbose=True)
+    overall_chain = SequentialChain(chains=[analysis_chain,req_detailer_chain, project_chain,risk_chain],input_variables=["idea","problemDefinition","metricsAndGoals","targetAudience","constraints","solutionOverview"],output_variables=["requirements_USPs", "requirements_details", "project_plan","risk_assessment"],verbose=True)
     answer = overall_chain(
         {
             "idea":idea,
             "problemDefinition":problemDefinition,
+            "metricsAndGoals":metricsAndGoals,
             "targetAudience":targetAudience,
             "constraints":constraints,
             "solutionOverview":solutionOverview,
@@ -73,7 +76,7 @@ def analysis_bot():
 
     Here are the constraints: {constraints}. If they are not given, assume there are no constraints. 
 
-    So broadly, the solution overview is: {solutionOverview}
+    So broadly, the solution overview is: {solutionOverview} with the metrics and goals of the project: {metricsAndGoals}
 
     These are requirements and USPs based on the given data:
     """
@@ -130,6 +133,7 @@ def risk_assess():
 def market_analysis_agent_search():
     """ Takes an area to research and does so using internet"""
     search = SerpAPIWrapper()
+    duck_search = DuckDuckGoSearchRun()
     tools = [
         Tool(
             name = "Search",
