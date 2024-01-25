@@ -29,7 +29,7 @@ working_directory = TemporaryDirectory()
 
 search = SerpAPIWrapper()
 
-llm = Anthropic(streaming=True,callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]))
+llm = Anthropic(callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]))
 # llm = ChatAnthropic()
 # llm_math_chain = LLMMathChain.from_llm(llm=llm, verbose=True)
 
@@ -68,11 +68,6 @@ def plan_execute_with_internet():
             description="Useful to learn about best pratice to do something or to know about current events you can use this to search"
         )
         ,
-        # Tool(
-        # name="human",
-        # description="Useful for when you need to get input from a human",
-        # func=input,  # Use the default input function
-        # )
     ]
 
     executor = load_agent_executor(model, tools, verbose=True)
